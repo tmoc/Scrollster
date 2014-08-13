@@ -15,13 +15,9 @@ define(function(require, exports, module) {
 
     var ActorView     = require('views/ActorView');
     var UnitConverter = require('tools/UnitConverter');
-    var ActorFactory = require('tools/ActorFactory');
-    var ActionFactory = require('tools/ActionFactory');
     var PositionModifier = require('modifiers/PositionModifier');
     var MoveToModifier   = require('modifiers/MoveToModifier');
     var RotateToModifier   = require('modifiers/RotateToModifier');
-    var OpacityModifier  = require('modifiers/OpacityModifier');
-    var ScaleModifier    = require('modifiers/ScaleModifier');
 
     GenericSync.register({
         'mouse': MouseSync,
@@ -37,7 +33,7 @@ define(function(require, exports, module) {
         _setupScrollInfoSurface.call(this);
         _handleScroll.call(this);
         _createDemoActor.call(this);
-        _setupArrowKeyBreakpoints.call(this, [300, 500, 700, 900, 1000], 4, 10);
+        _setupArrowKeyBreakpoints.call(this, [500, 1000, 1500], 4, 5);
     }
 
     StageView.DEFAULT_OPTIONS = {
@@ -60,8 +56,7 @@ define(function(require, exports, module) {
             size: [200, 200],
             content: 'Scroll Value: ',
             properties: {
-                backgroundColor: 'white',
-                zIndex: '0'
+                backgroundColor: 'white'
             }
         });
 
@@ -95,25 +90,21 @@ define(function(require, exports, module) {
         this._arrowData.speed = speed;
 
         Engine.on('keydown', function(e) {
-            // If movement is already in progress, cancel interval 
-            if (this._arrowData.interval) {
-                Timer.clear(this._arrowData.interval);
-                delete this._arrowData.interval;
-            } 
+            // If movement is already in progress, do nothing. TODO: enable cancelling movement
+            if (this._arrowData.interval) return;
             // Up arrow key 
             if (e.keyCode === 38) {
                 // Decrement index if not at top of page
                 if (this._arrowData.index > 0) this._arrowData.index--;
-
                 this._arrowData.interval = Timer.setInterval(function() {
-                    if (this.worldScrollValue <= this._arrowData.breakpoints[this._arrowData.index]) {
+                    if (this.worldScrollValue === this._arrowData.breakpoints[this._arrowData.index]) {
                         Timer.clear(this._arrowData.interval);
                         delete this._arrowData.interval;
                     } else {
                         if (this.worldScrollValue > this._arrowData.breakpoints[this._arrowData.index]) {
                             this.worldScrollValue -= step;
                             this.scrollInfo.setContent('Scroll Value: ' + this.worldScrollValue);
-                            this._eventOutput.emit('ScrollUpdated', {delta: -step});
+                            this._eventOutput.emit('ScrollUpdated', {delta: step});
                         } else {
                             Timer.clear(this._arrowData.interval);
                             delete this._arrowData.interval;
@@ -124,17 +115,16 @@ define(function(require, exports, module) {
             // Down arrow key
             } else if (e.keyCode === 40) {
                 // Increment index if not at last breakpoint
-                if (this._arrowData.index < this._arrowData.breakpoints.length - 1) this._arrowData.index++;
-
+                if (this._arrowData.index !== this._arrowData.breakpoints.length - 1) this._arrowData.index++;
                 this._arrowData.interval = Timer.setInterval(function() {
-                    if (this.worldScrollValue >= this._arrowData.breakpoints[this._arrowData.index]) {
+                    if (this.worldScrollValue === this._arrowData.breakpoints[this._arrowData.index]) {
                         Timer.clear(this._arrowData.interval);
                         delete this._arrowData.interval;
                     } else {
                         if (this.worldScrollValue < this._arrowData.breakpoints[this._arrowData.index]) {
                             this.worldScrollValue += step;
                             this.scrollInfo.setContent('Scroll Value: ' + this.worldScrollValue);
-                            this._eventOutput.emit('ScrollUpdated', {delta: step});
+                            this._eventOutput.emit('ScrollUpdated', {delta: -step});
                         } else {
                             Timer.clear(this._arrowData.interval);
                             delete this._arrowData.interval;
@@ -146,43 +136,23 @@ define(function(require, exports, module) {
     }
 
     function _createDemoActor() {
-        var actorFactory = new ActorFactory();
-        var actionFactory = new ActionFactory();
-
-        var demoActor = actorFactory.makeActor('Demo Actor',
-                                                'image',
-                                                'content/images/famous_logo.png',
-                                                {
-                                                    // backgroundColor: '#777777',
-                                                    fontSize: '2em',
-                                                    padding: '.5em',
-                                                    backfaceVisibility: 'visible',
-                                                    zIndex: '10'
-                                                },
-                                                undefined,
-                                                [300, 300]);
+        var demoActor = new ActorView();
 
         demoActor.setPositionPixels(150, 150);
-        demoActor.activate(this.sync);
-        var positionModifier = actionFactory.makeAction(demoActor, 'position', 0, 599, { scaleX: 0, scaleY: -1});
-        var moveToModifier = actionFactory.makeAction(demoActor, 'moveTo', 600, 1000, {location: [720, 450]});
-        var rotateToModifier = actionFactory.makeAction(demoActor, 'rotateTo', 0, 1000, {axis: 'y', angleInDegrees: 540});
-        // var rotateToModifier = actionFactory.makeAction(demoActor, 'rotate', 0, 1800, {axis: 'y', scale: 1});
-        var opacityModifier = actionFactory.makeAction(demoActor, 'opacity', 100, 600);
-        var scaleModifier = new ScaleModifier(800, 1000, 1, 5);
+        var positionModifier = new PositionModifier(demoActor, 0, -1, 0, 600);
+        var moveToModifier = new MoveToModifier(demoActor, 600, 1000, 720, 450);
+        var rotateToModifier = new RotateToModifier(demoActor, 0, 1000, 'y', 540);
 
-        demoActor.addModifier(scaleModifier);
         demoActor.addModifier(rotateToModifier);
         demoActor.addModifier(positionModifier);
         demoActor.addModifier(moveToModifier);
-        demoActor.addModifier(opacityModifier);
         // demoActor.setPositionPixels(900, 100);
 
-        // var opacityModifier = new Modifier({
-        //     opacity: function() {
-        //         return Math.max(0, -this.scrollProgress / 100);
-        //     }.bind(demoActor)
-        // });
+        var opacityModifier = new Modifier({
+            opacity: function() {
+                return Math.max(0, -this.scrollProgress / 100);
+            }.bind(demoActor)
+        });
 
         // demoActor.addModifier(opacityModifier);
 
@@ -193,6 +163,7 @@ define(function(require, exports, module) {
         //     startScroll: -100
         // };
 
+        demoActor.activate(this.sync);
         demoActor.subscribe(this._eventOutput);
 
         this.add(demoActor);

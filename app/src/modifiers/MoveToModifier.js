@@ -7,7 +7,6 @@ define(function(require, exports, module) {
         this.actor = actor;
         this.scrollStart  = scrollStart;
         this.scrollStop = scrollStop;
-        this.scrollRange = scrollStop - scrollStart;
         this.pixelsStopX = pixelsStopX;
         this.pixelsStopY = pixelsStopY;
         this.scrollState = 'inactive';
@@ -33,8 +32,10 @@ define(function(require, exports, module) {
             if (!this.startX) this.startX = currPixelX;
             if (!this.startY) this.startY = currPixelY;
 
-            var newPixelX = ((this.pixelsStopX - this.startX) / this.scrollRange) * (scrollPosition - this.scrollStart);
-            var newPixelY = ((this.pixelsStopY - this.startY) / this.scrollRange) * (scrollPosition - this.scrollStart);
+            var scrollRange = this.scrollStop - this.scrollStart;
+
+            var newPixelX = ((this.pixelsStopX - this.startX) / scrollRange) * (scrollPosition - this.scrollStart);
+            var newPixelY = ((this.pixelsStopY - this.startY) / scrollRange) * (scrollPosition - this.scrollStart);
 
             this.actor.setPositionPixels(this.startX + newPixelX, this.startY + newPixelY);
 
@@ -47,9 +48,7 @@ define(function(require, exports, module) {
                    (scrollPosition < this.scrollStart)) {
             // Passing out of scroll range.
             this.scrollState = 'lower';
-            if (this.startX !== undefined && this.startY !== undefined){
-                this.actor.setPositionPixels(this.startX, this.startY);
-            }
+            this.actor.setPositionPixels(this.startX, this.startY);
         } else {
             // out of range
             this.scrollState = 'inactive';
